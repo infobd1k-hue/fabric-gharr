@@ -142,6 +142,10 @@ export const CreateSaleBody = zod.object({
   price: zod.number().min(createSaleBodyPriceMin),
   disc: zod.number().min(createSaleBodyDiscMin),
   note: zod.string().optional(),
+  date: zod
+    .string()
+    .optional()
+    .describe("ISO date string; defaults to now if omitted"),
 });
 
 /**
@@ -164,6 +168,10 @@ export const UpdateSaleBody = zod.object({
   price: zod.number().min(updateSaleBodyPriceMin),
   disc: zod.number().min(updateSaleBodyDiscMin),
   note: zod.string().optional(),
+  date: zod
+    .string()
+    .optional()
+    .describe("ISO date string; defaults to now if omitted"),
 });
 
 export const UpdateSaleResponse = zod.object({

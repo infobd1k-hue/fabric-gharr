@@ -422,6 +422,9 @@ components:
           minimum: 0
         note:
           type: string
+        date:
+          type: string
+          description: ISO date string; defaults to now if omitted
 
     Expense:
       type: object

@@ -59,6 +59,65 @@ export function FormInput({ highlight, style, ...rest }: InputProps) {
   );
 }
 
+type DateInputProps = {
+  value: string;
+  onChange: (yyyyMmDd: string) => void;
+  max?: string;
+  min?: string;
+};
+export function FormDateInput({ value, onChange, max, min }: DateInputProps) {
+  const colors = useColors();
+  if (Platform.OS === "web") {
+    return (
+      <input
+        type="date"
+        value={value}
+        max={max}
+        min={min}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          backgroundColor: colors.cardElevated,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderStyle: "solid",
+          color: colors.text,
+          borderRadius: colors.radius - 2,
+          paddingTop: 10,
+          paddingBottom: 10,
+          paddingLeft: 12,
+          paddingRight: 12,
+          fontSize: 14,
+          fontFamily: "inherit",
+          outline: "none",
+          colorScheme: "dark",
+          width: "100%",
+          boxSizing: "border-box",
+        }}
+      />
+    );
+  }
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder="YYYY-MM-DD"
+      placeholderTextColor={colors.mutedForeground}
+      autoCapitalize="none"
+      autoCorrect={false}
+      keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "default"}
+      style={[
+        styles.input,
+        {
+          backgroundColor: colors.cardElevated,
+          borderColor: colors.border,
+          color: colors.text,
+          borderRadius: colors.radius - 2,
+        },
+      ]}
+    />
+  );
+}
+
 type SelectProps = {
   value: string;
   onChange: (v: string) => void;

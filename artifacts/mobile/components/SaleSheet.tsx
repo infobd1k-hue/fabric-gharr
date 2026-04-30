@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Field,
   FieldRow,
+  FormDateInput,
   FormInput,
   FormSelect,
   SheetButtons,
@@ -28,6 +29,40 @@ type Props = {
   onClose: () => void;
   editing?: Sale | null;
 };
+
+function toYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function ymdToIso(ymd: string, fallback: Date): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
+  if (!m) return fallback.toISOString();
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (
+    !year ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return fallback.toISOString();
+  }
+  const now = new Date();
+  const d = new Date(
+    year,
+    month - 1,
+    day,
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+  );
+  return Number.isNaN(d.getTime()) ? fallback.toISOString() : d.toISOString();
+}
 
 export function SaleSheet({ visible, onClose, editing }: Props) {
   const { email } = useShop();
@@ -47,6 +82,7 @@ export function SaleSheet({ visible, onClose, editing }: Props) {
   const [price, setPrice] = useState("");
   const [disc, setDisc] = useState("0");
   const [note, setNote] = useState("");
+  const [date, setDate] = useState<string>(toYmd(new Date()));
 
   useEffect(() => {
     if (!visible) return;
@@ -56,11 +92,13 @@ export function SaleSheet({ visible, onClose, editing }: Props) {
       setPrice(String(editing.price));
       setDisc(String(editing.disc ?? 0));
       setNote(editing.note ?? "");
+      setDate(toYmd(new Date(editing.date)));
       return;
     }
     setQty("1");
     setDisc("0");
     setNote("");
+    setDate(toYmd(new Date()));
     const first = products[0];
     if (first) {
       setPid(first.id);
@@ -152,12 +190,14 @@ export function SaleSheet({ visible, onClose, editing }: Props) {
       show(`স্টকে মাত্র ${fmt(product.stock)} পিস আছে`, "error");
       return;
     }
+    const fallbackDate = editing ? new Date(editing.date) : new Date();
     const data = {
       pid,
       qty: q,
       price: p,
       disc: d,
       note: note.trim() || undefined,
+      date: ymdToIso(date, fallbackDate),
     };
     if (isEdit && editing) {
       updateMut.mutate({ email, id: editing.id, data });
@@ -202,6 +242,13 @@ export function SaleSheet({ visible, onClose, editing }: Props) {
             value: p.id,
             label: `${p.name} (স্টক: ${fmt(p.stock)})`,
           }))}
+        />
+      </Field>
+      <Field label="তারিখ">
+        <FormDateInput
+          value={date}
+          onChange={setDate}
+          max={toYmd(new Date())}
         />
       </Field>
       <FieldRow>

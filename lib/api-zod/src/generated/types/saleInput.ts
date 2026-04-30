@@ -15,4 +15,6 @@ export interface SaleInput {
   /** @minimum 0 */
   disc: number;
   note?: string;
+  /** ISO date string; defaults to now if omitted */
+  date?: string;
 }

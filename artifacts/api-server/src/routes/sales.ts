@@ -12,6 +12,15 @@ function makeId(): string {
   return Date.now().toString() + Math.random().toString(36).slice(2, 9);
 }
 
+function parseSaleDate(input: unknown): Date {
+  if (input instanceof Date && !Number.isNaN(input.getTime())) return input;
+  if (typeof input === "string" && input.length > 0) {
+    const d = new Date(input);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return new Date();
+}
+
 router.get("/shops/:email/sales", async (req, res) => {
   const email = req.params.email.toLowerCase();
   const rows = await db
@@ -29,7 +38,8 @@ router.post("/shops/:email/sales", async (req, res) => {
     res.status(400).json({ error: "Invalid sale input" });
     return;
   }
-  const { pid, qty, price, disc, note } = parsed.data;
+  const { pid, qty, price, disc, note, date } = parsed.data;
+  const saleDate = parseSaleDate(date);
 
   const result = await db.transaction(async (tx) => {
     const [product] = await tx
@@ -64,7 +74,7 @@ router.post("/shops/:email/sales", async (req, res) => {
       .values({
         id: makeId(),
         shopEmail: email,
-        date: new Date(),
+        date: saleDate,
         pid,
         pname: product.name,
         qty,
@@ -94,7 +104,7 @@ router.patch("/shops/:email/sales/:id", async (req, res) => {
     res.status(400).json({ error: "Invalid sale input" });
     return;
   }
-  const { pid, qty, price, disc, note } = parsed.data;
+  const { pid, qty, price, disc, note, date } = parsed.data;
 
   const result = await db.transaction(async (tx) => {
     const [existing] = await tx
@@ -106,6 +116,7 @@ router.patch("/shops/:email/sales/:id", async (req, res) => {
     if (!existing) {
       return { error: "Sale not found" } as const;
     }
+    const saleDate = date ? parseSaleDate(date) : existing.date;
 
     const [newProduct] = await tx
       .select()
@@ -175,6 +186,7 @@ router.patch("/shops/:email/sales/:id", async (req, res) => {
         total,
         profit,
         note: note ?? null,
+        date: saleDate,
       })
       .where(
         and(eq(salesTable.id, id), eq(salesTable.shopEmail, email)),
