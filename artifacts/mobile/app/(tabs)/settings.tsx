@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Copy,
   Download,
+  FileSpreadsheet,
   Fingerprint,
   KeyRound,
   Lock,
@@ -24,6 +25,7 @@ import { Image } from "expo-image";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import React, { useState } from "react";
+import * as XLSX from "xlsx";
 import {
   ActivityIndicator,
   Alert,
@@ -50,7 +52,9 @@ export default function SettingsScreen() {
   const { email, signOut } = useShop();
   const { show } = useToast();
   const qc = useQueryClient();
-  const [busy, setBusy] = useState<null | "backup" | "restore" | "share">(null);
+  const [busy, setBusy] = useState<
+    null | "backup" | "restore" | "share" | "excel"
+  >(null);
   const {
     settings: lockSettings,
     biometricAvailable,
@@ -141,6 +145,132 @@ export default function SettingsScreen() {
       }
     } catch {
       show("ব্যাকআপ ব্যর্থ হয়েছে", "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onExportExcel = async () => {
+    if (!email) return;
+    setBusy("excel");
+    try {
+      const data = (await getBackup(email)) as BackupSnapshot;
+
+      const productRows = (data.products ?? []).map((p) => ({
+        নাম: p.name,
+        ক্যাটাগরি: p.cat,
+        "ক্রয় মূল্য": Number(p.buy) || 0,
+        "বিক্রয় মূল্য": Number(p.sell) || 0,
+        স্টক: Number(p.stock) || 0,
+      }));
+
+      const saleRows = (data.sales ?? []).map((s) => {
+        const d = new Date(s.date);
+        return {
+          তারিখ: isNaN(d.getTime()) ? s.date : d.toISOString().slice(0, 10),
+          পণ্য: s.pname,
+          পরিমাণ: Number(s.qty) || 0,
+          "একক মূল্য": Number(s.price) || 0,
+          "ক্রয় মূল্য": Number(s.buy) || 0,
+          ছাড়: Number(s.disc) || 0,
+          মোট: Number(s.total) || 0,
+          লাভ: Number(s.profit) || 0,
+          নোট: s.note ?? "",
+        };
+      });
+
+      const expenseRows = (data.expenses ?? []).map((e) => {
+        const d = new Date(e.date);
+        return {
+          তারিখ: isNaN(d.getTime()) ? e.date : d.toISOString().slice(0, 10),
+          ক্যাটাগরি: e.cat,
+          পরিমাণ: Number(e.amount) || 0,
+          নোট: e.note ?? "",
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const wsProducts = XLSX.utils.json_to_sheet(
+        productRows.length
+          ? productRows
+          : [
+              {
+                নাম: "",
+                ক্যাটাগরি: "",
+                "ক্রয় মূল্য": "",
+                "বিক্রয় মূল্য": "",
+                স্টক: "",
+              },
+            ],
+      );
+      const wsSales = XLSX.utils.json_to_sheet(
+        saleRows.length
+          ? saleRows
+          : [
+              {
+                তারিখ: "",
+                পণ্য: "",
+                পরিমাণ: "",
+                "একক মূল্য": "",
+                "ক্রয় মূল্য": "",
+                ছাড়: "",
+                মোট: "",
+                লাভ: "",
+                নোট: "",
+              },
+            ],
+      );
+      const wsExpenses = XLSX.utils.json_to_sheet(
+        expenseRows.length
+          ? expenseRows
+          : [{ তারিখ: "", ক্যাটাগরি: "", পরিমাণ: "", নোট: "" }],
+      );
+      XLSX.utils.book_append_sheet(wb, wsProducts, "পণ্য");
+      XLSX.utils.book_append_sheet(wb, wsSales, "বিক্রয়");
+      XLSX.utils.book_append_sheet(wb, wsExpenses, "খরচ");
+
+      const filename = `fabricghar-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      if (Platform.OS === "web") {
+        const arrayBuf = XLSX.write(wb, {
+          type: "array",
+          bookType: "xlsx",
+        }) as ArrayBuffer;
+        const blob = new Blob([arrayBuf], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        show("Excel ফাইল ডাউনলোড হয়েছে", "success");
+      } else {
+        const base64 = XLSX.write(wb, {
+          type: "base64",
+          bookType: "xlsx",
+        }) as string;
+        const uri = `${FileSystem.cacheDirectory}${filename}`;
+        await FileSystem.writeAsStringAsync(uri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(uri, {
+            mimeType:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            dialogTitle: "Excel ফাইল সংরক্ষণ করুন",
+            UTI: "org.openxmlformats.spreadsheetml.sheet",
+          });
+        } else {
+          show(`ফাইল সংরক্ষিত: ${filename}`, "success");
+        }
+      }
+    } catch {
+      show("Excel ফাইল তৈরি ব্যর্থ হয়েছে", "error");
     } finally {
       setBusy(null);
     }
@@ -265,6 +395,14 @@ export default function SettingsScreen() {
             subtitle="JSON ফাইল হিসেবে সংরক্ষণ করুন বা শেয়ার করুন"
             onPress={onBackup}
             busy={busy === "backup"}
+          />
+          <Divider />
+          <Action
+            Icon={FileSpreadsheet}
+            title="Excel/CSV ডাউনলোড"
+            subtitle="পণ্য, বিক্রয় ও খরচ - তিনটি শীটে .xlsx ফাইল"
+            onPress={onExportExcel}
+            busy={busy === "excel"}
           />
           <Divider />
           <Action
