@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "YO8eSC6UB7vsM9p_9Eeq8"
+uri = "file://exports/FabricGhar-source-code.md"
+type = "text"
+title = "FabricGhar — সম্পূর্ণ সোর্স কোড"
