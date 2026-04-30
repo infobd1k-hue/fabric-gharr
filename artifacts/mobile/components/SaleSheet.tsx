@@ -5,7 +5,9 @@ import {
   getListSalesQueryKey,
   listProducts,
   useCreateSale,
+  useUpdateSale,
   type Product,
+  type Sale,
 } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -24,12 +26,14 @@ import { fmt } from "@/lib/format";
 type Props = {
   visible: boolean;
   onClose: () => void;
+  editing?: Sale | null;
 };
 
-export function SaleSheet({ visible, onClose }: Props) {
+export function SaleSheet({ visible, onClose, editing }: Props) {
   const { email } = useShop();
   const { show } = useToast();
   const qc = useQueryClient();
+  const isEdit = !!editing;
 
   const productsQuery = useQuery<Product[]>({
     queryKey: email ? getListProductsQueryKey(email) : ["disabled"],
@@ -45,24 +49,32 @@ export function SaleSheet({ visible, onClose }: Props) {
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    if (visible) {
-      setQty("1");
-      setDisc("0");
-      setNote("");
-      const first = products[0];
-      if (first) {
-        setPid(first.id);
-        setPrice(String(first.sell ?? ""));
-      } else {
-        setPid("");
-        setPrice("");
-      }
+    if (!visible) return;
+    if (editing) {
+      setPid(editing.pid);
+      setQty(String(editing.qty));
+      setPrice(String(editing.price));
+      setDisc(String(editing.disc ?? 0));
+      setNote(editing.note ?? "");
+      return;
+    }
+    setQty("1");
+    setDisc("0");
+    setNote("");
+    const first = products[0];
+    if (first) {
+      setPid(first.id);
+      setPrice(String(first.sell ?? ""));
+    } else {
+      setPid("");
+      setPrice("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, products.length]);
+  }, [visible, products.length, editing?.id]);
 
   const onSelectProduct = (id: string) => {
     setPid(id);
+    if (isEdit) return;
     const p = products.find((x) => x.id === id);
     if (p) setPrice(String(p.sell ?? ""));
   };
@@ -74,32 +86,50 @@ export function SaleSheet({ visible, onClose }: Props) {
     return Math.max(0, q * p - d);
   }, [qty, price, disc]);
 
-  const mut = useCreateSale({
+  const invalidate = async () => {
+    if (email) {
+      await qc.invalidateQueries({
+        queryKey: getListSalesQueryKey(email),
+      });
+      await qc.invalidateQueries({
+        queryKey: getListProductsQueryKey(email),
+      });
+    }
+    await qc.invalidateQueries({
+      predicate: (q) => {
+        const key = q.queryKey?.[0];
+        return (
+          typeof key === "string" &&
+          (key.includes("dashboard") || key.includes("report"))
+        );
+      },
+    });
+  };
+
+  const createMut = useCreateSale({
     mutation: {
       onSuccess: async () => {
-        if (email) {
-          await qc.invalidateQueries({
-            queryKey: getListSalesQueryKey(email),
-          });
-          await qc.invalidateQueries({
-            queryKey: getListProductsQueryKey(email),
-          });
-        }
-        await qc.invalidateQueries({
-          predicate: (q) => {
-            const key = q.queryKey?.[0];
-            return (
-              typeof key === "string" &&
-              (key.includes("dashboard") || key.includes("report"))
-            );
-          },
-        });
+        await invalidate();
         show("বিক্রয় সম্পন্ন হয়েছে", "success");
         onClose();
       },
       onError: (err: unknown) => {
         const e = err as { response?: { data?: { error?: string } } };
         show(e?.response?.data?.error ?? "বিক্রয় ব্যর্থ হয়েছে", "error");
+      },
+    },
+  });
+
+  const updateMut = useUpdateSale({
+    mutation: {
+      onSuccess: async () => {
+        await invalidate();
+        show("বিক্রয় হালনাগাদ হয়েছে", "success");
+        onClose();
+      },
+      onError: (err: unknown) => {
+        const e = err as { response?: { data?: { error?: string } } };
+        show(e?.response?.data?.error ?? "হালনাগাদ ব্যর্থ হয়েছে", "error");
       },
     },
   });
@@ -118,25 +148,31 @@ export function SaleSheet({ visible, onClose }: Props) {
       return;
     }
     const product = products.find((x) => x.id === pid);
-    if (product && product.stock < q) {
+    if (!isEdit && product && product.stock < q) {
       show(`স্টকে মাত্র ${fmt(product.stock)} পিস আছে`, "error");
       return;
     }
-    mut.mutate({
-      email,
-      data: {
-        pid,
-        qty: q,
-        price: p,
-        disc: d,
-        note: note.trim() || undefined,
-      },
-    });
+    const data = {
+      pid,
+      qty: q,
+      price: p,
+      disc: d,
+      note: note.trim() || undefined,
+    };
+    if (isEdit && editing) {
+      updateMut.mutate({ email, id: editing.id, data });
+    } else {
+      createMut.mutate({ email, data });
+    }
   };
 
   if (products.length === 0 && visible) {
     return (
-      <Sheet visible={visible} onClose={onClose} title="নতুন বিক্রয়">
+      <Sheet
+        visible={visible}
+        onClose={onClose}
+        title={isEdit ? "বিক্রয় সম্পাদনা" : "নতুন বিক্রয়"}
+      >
         <Field label="">
           <></>
         </Field>
@@ -150,8 +186,14 @@ export function SaleSheet({ visible, onClose }: Props) {
     );
   }
 
+  const busy = createMut.isPending || updateMut.isPending;
+
   return (
-    <Sheet visible={visible} onClose={onClose} title="নতুন বিক্রয়">
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title={isEdit ? "বিক্রয় সম্পাদনা" : "নতুন বিক্রয়"}
+    >
       <Field label="পণ্য">
         <FormSelect
           value={pid}
@@ -204,8 +246,8 @@ export function SaleSheet({ visible, onClose }: Props) {
       <SheetButtons
         onCancel={onClose}
         onSubmit={submit}
-        submitLabel="বিক্রয় সম্পন্ন ✓"
-        busy={mut.isPending}
+        submitLabel={isEdit ? "সংরক্ষণ ✓" : "বিক্রয় সম্পন্ন ✓"}
+        busy={busy}
       />
     </Sheet>
   );

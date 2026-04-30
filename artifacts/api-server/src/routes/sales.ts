@@ -1,7 +1,10 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db, productsTable, salesTable } from "@workspace/db";
-import { CreateSaleBody as SaleInputSchema } from "@workspace/api-zod";
+import {
+  CreateSaleBody as SaleInputSchema,
+  UpdateSaleBody as SaleUpdateSchema,
+} from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -81,6 +84,148 @@ router.post("/shops/:email/sales", async (req, res) => {
     return;
   }
   res.status(201).json(toSaleDto(result.sale));
+});
+
+router.patch("/shops/:email/sales/:id", async (req, res) => {
+  const email = req.params.email.toLowerCase();
+  const id = req.params.id;
+  const parsed = SaleUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid sale input" });
+    return;
+  }
+  const { pid, qty, price, disc, note } = parsed.data;
+
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(salesTable)
+      .where(
+        and(eq(salesTable.id, id), eq(salesTable.shopEmail, email)),
+      );
+    if (!existing) {
+      return { error: "Sale not found" } as const;
+    }
+
+    const [newProduct] = await tx
+      .select()
+      .from(productsTable)
+      .where(
+        and(eq(productsTable.id, pid), eq(productsTable.shopEmail, email)),
+      );
+    if (!newProduct) {
+      return { error: "Product not found" } as const;
+    }
+
+    const oldQty = Number(existing.qty);
+    const samePid = existing.pid === pid;
+
+    if (samePid) {
+      const available = Number(newProduct.stock) + oldQty;
+      if (available < qty) {
+        return {
+          error: `Insufficient stock. Only ${available} available.`,
+        } as const;
+      }
+      const delta = qty - oldQty;
+      if (delta !== 0) {
+        await tx
+          .update(productsTable)
+          .set({
+            stock: sql`${productsTable.stock} - ${delta}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(productsTable.id, pid));
+      }
+    } else {
+      if (Number(newProduct.stock) < qty) {
+        return {
+          error: `Insufficient stock. Only ${Number(newProduct.stock)} available.`,
+        } as const;
+      }
+      await tx
+        .update(productsTable)
+        .set({
+          stock: sql`${productsTable.stock} + ${oldQty}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(productsTable.id, existing.pid));
+      await tx
+        .update(productsTable)
+        .set({
+          stock: sql`${productsTable.stock} - ${qty}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(productsTable.id, pid));
+    }
+
+    const buy = Number(newProduct.buy);
+    const total = Math.max(0, qty * price - (disc ?? 0));
+    const profit = total - buy * qty;
+
+    const [row] = await tx
+      .update(salesTable)
+      .set({
+        pid,
+        pname: newProduct.name,
+        qty,
+        price,
+        buy,
+        disc: disc ?? 0,
+        total,
+        profit,
+        note: note ?? null,
+      })
+      .where(
+        and(eq(salesTable.id, id), eq(salesTable.shopEmail, email)),
+      )
+      .returning();
+    return { sale: row } as const;
+  });
+
+  if ("error" in result) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json(toSaleDto(result.sale));
+});
+
+router.delete("/shops/:email/sales/:id", async (req, res) => {
+  const email = req.params.email.toLowerCase();
+  const id = req.params.id;
+
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(salesTable)
+      .where(
+        and(eq(salesTable.id, id), eq(salesTable.shopEmail, email)),
+      );
+    if (!existing) {
+      return { ok: true } as const;
+    }
+    await tx
+      .update(productsTable)
+      .set({
+        stock: sql`${productsTable.stock} + ${Number(existing.qty)}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(productsTable.id, existing.pid),
+          eq(productsTable.shopEmail, email),
+        ),
+      );
+    await tx
+      .delete(salesTable)
+      .where(
+        and(eq(salesTable.id, id), eq(salesTable.shopEmail, email)),
+      );
+    return { ok: true } as const;
+  });
+
+  void result;
+  res.status(204).end();
 });
 
 export function toSaleDto(row: typeof salesTable.$inferSelect) {

@@ -159,6 +159,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/Sale"
 
+  /shops/{email}/sales/{id}:
+    patch:
+      operationId: updateSale
+      tags: [sales]
+      summary: Update an existing sale (adjusts stock accordingly)
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleInput"
+      responses:
+        "200":
+          description: Updated sale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sale"
+    delete:
+      operationId: deleteSale
+      tags: [sales]
+      summary: Delete a sale (restores stock)
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+
   /shops/{email}/dashboard:
     get:
       operationId: getDashboard

@@ -722,6 +722,179 @@ export const useCreateSale = <
 };
 
 /**
+ * @summary Update an existing sale (adjusts stock accordingly)
+ */
+export const getUpdateSaleUrl = (email: string, id: string) => {
+  return `/api/shops/${email}/sales/${id}`;
+};
+
+export const updateSale = async (
+  email: string,
+  id: string,
+  saleInput: SaleInput,
+  options?: RequestInit,
+): Promise<Sale> => {
+  return customFetch<Sale>(getUpdateSaleUrl(email, id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(saleInput),
+  });
+};
+
+export const getUpdateSaleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSale>>,
+    TError,
+    { email: string; id: string; data: BodyType<SaleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSale>>,
+  TError,
+  { email: string; id: string; data: BodyType<SaleInput> },
+  TContext
+> => {
+  const mutationKey = ["updateSale"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSale>>,
+    { email: string; id: string; data: BodyType<SaleInput> }
+  > = (props) => {
+    const { email, id, data } = props ?? {};
+
+    return updateSale(email, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSaleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSale>>
+>;
+export type UpdateSaleMutationBody = BodyType<SaleInput>;
+export type UpdateSaleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update an existing sale (adjusts stock accordingly)
+ */
+export const useUpdateSale = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSale>>,
+    TError,
+    { email: string; id: string; data: BodyType<SaleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSale>>,
+  TError,
+  { email: string; id: string; data: BodyType<SaleInput> },
+  TContext
+> => {
+  return useMutation(getUpdateSaleMutationOptions(options));
+};
+
+/**
+ * @summary Delete a sale (restores stock)
+ */
+export const getDeleteSaleUrl = (email: string, id: string) => {
+  return `/api/shops/${email}/sales/${id}`;
+};
+
+export const deleteSale = async (
+  email: string,
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteSaleUrl(email, id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSaleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSale>>,
+    TError,
+    { email: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSale>>,
+  TError,
+  { email: string; id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteSale"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSale>>,
+    { email: string; id: string }
+  > = (props) => {
+    const { email, id } = props ?? {};
+
+    return deleteSale(email, id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSaleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSale>>
+>;
+
+export type DeleteSaleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a sale (restores stock)
+ */
+export const useDeleteSale = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSale>>,
+    TError,
+    { email: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSale>>,
+  TError,
+  { email: string; id: string },
+  TContext
+> => {
+  return useMutation(getDeleteSaleMutationOptions(options));
+};
+
+/**
  * @summary Dashboard summary stats
  */
 export const getGetDashboardUrl = (email: string) => {

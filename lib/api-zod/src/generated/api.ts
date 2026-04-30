@@ -145,6 +145,52 @@ export const CreateSaleBody = zod.object({
 });
 
 /**
+ * @summary Update an existing sale (adjusts stock accordingly)
+ */
+export const UpdateSaleParams = zod.object({
+  email: zod.coerce
+    .string()
+    .describe("Shop owner email (used as shared workspace identifier)"),
+  id: zod.coerce.string(),
+});
+
+export const updateSaleBodyPriceMin = 0;
+
+export const updateSaleBodyDiscMin = 0;
+
+export const UpdateSaleBody = zod.object({
+  pid: zod.string(),
+  qty: zod.number().min(1),
+  price: zod.number().min(updateSaleBodyPriceMin),
+  disc: zod.number().min(updateSaleBodyDiscMin),
+  note: zod.string().optional(),
+});
+
+export const UpdateSaleResponse = zod.object({
+  id: zod.string(),
+  date: zod.string().describe("ISO date string"),
+  pid: zod.string(),
+  pname: zod.string(),
+  qty: zod.number(),
+  price: zod.number(),
+  buy: zod.number(),
+  disc: zod.number(),
+  total: zod.number(),
+  profit: zod.number(),
+  note: zod.string().optional(),
+});
+
+/**
+ * @summary Delete a sale (restores stock)
+ */
+export const DeleteSaleParams = zod.object({
+  email: zod.coerce
+    .string()
+    .describe("Shop owner email (used as shared workspace identifier)"),
+  id: zod.coerce.string(),
+});
+
+/**
  * @summary Dashboard summary stats
  */
 export const GetDashboardParams = zod.object({
