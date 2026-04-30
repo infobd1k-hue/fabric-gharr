@@ -39,4 +39,8 @@ A Bengali (Bangla) fabric shop management app — Expo React Native mobile + Exp
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
+## Notes
+
+- **GitHub**: User dismissed the GitHub integration on 2026-04-30. They can connect later from Replit's Git pane manually if they want version control hosting. Do not auto-prompt again unless the user explicitly asks.
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
