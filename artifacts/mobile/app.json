@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "FabricGhar",
-    "slug": "mobile",
+    "slug": "fabricghar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "fabricghar",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -14,9 +14,18 @@
       "backgroundColor": "#0f0f13"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.fabricghar.app"
     },
-    "android": {},
+    "android": {
+      "package": "com.fabricghar.app",
+      "versionCode": 1,
+      "permissions": ["INTERNET", "USE_BIOMETRIC", "USE_FINGERPRINT"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0f0f13"
+      }
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -38,6 +47,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_AFTER_RUNNING_EAS_INIT"
+      }
     }
   }
 }

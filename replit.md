@@ -18,6 +18,7 @@ A Bengali (Bangla) fabric shop management app — Expo React Native mobile + Exp
 - **Bundle hygiene**: Unused Expo packages have been pruned (no `expo-blur`, `expo-glass-effect`, `expo-symbols`, `expo-linear-gradient`, `expo-location`, `expo-image-picker`, `expo-system-ui`, `expo-web-browser`). Before adding back any of these, double-check there's a real consumer. React-Query is configured with `staleTime: 60_000` and `refetchOnWindowFocus: false` to minimize redundant refetches between tab switches.
 - **DB tables**: `productsTable`, `salesTable`, `expensesTable`, all indexed by `shop_email`.
 - **Icon/splash**: Logo at `artifacts/mobile/assets/images/icon.png`; splash background `#0f0f13`.
+- **Android APK build** (EAS): `artifacts/mobile/eas.json` configures `preview` (APK for sideloading) and `production` (AAB for Play Store) profiles. `app.json` has `android.package: com.fabricghar.app`, `versionCode: 1`, `INTERNET`/`USE_BIOMETRIC` permissions, and adaptive icon. `EXPO_PUBLIC_DOMAIN` must be set in `eas.json` env to the deployed API server URL (without `https://`) before building. Scripts: `pnpm --filter @workspace/mobile run apk` (cloud build, requires `eas-cli` + `eas login` + `eas init`). Full step-by-step Bengali guide: `exports/APK-BUILD-GUIDE.md`.
 
 ## Stack
 

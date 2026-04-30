@@ -6,3 +6,9 @@ id = "YO8eSC6UB7vsM9p_9Eeq8"
 uri = "file://exports/FabricGhar-source-code.md"
 type = "text"
 title = "FabricGhar — সম্পূর্ণ সোর্স কোড"
+
+[[outputs]]
+id = "3_dVGClMIK5jNUy7eHE-l"
+uri = "file://exports/APK-BUILD-GUIDE.md"
+type = "text"
+title = "APK বানানোর বাংলা গাইড"
