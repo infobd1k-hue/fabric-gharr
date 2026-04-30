@@ -1,0 +1,536 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: FabricGhar API specification — shared shop data scoped by user email
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: products
+    description: Product catalog operations
+  - name: sales
+    description: Sales operations
+  - name: reports
+    description: Aggregate report operations
+  - name: expenses
+    description: Daily expense tracking operations
+  - name: backup
+    description: Backup and restore operations
+paths:
+  /auth/ensure:
+    post:
+      operationId: ensureAccount
+      tags: [auth]
+      summary: Ensure an account exists for the given email (idempotent)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnsureAccount"
+      responses:
+        "200":
+          description: Account ensured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /shops/{email}/products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products for a shop
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a new product
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /shops/{email}/products/{id}:
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update an existing product
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+
+  /shops/{email}/sales:
+    get:
+      operationId: listSales
+      tags: [sales]
+      summary: List all sales for a shop
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      responses:
+        "200":
+          description: List of sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sale"
+    post:
+      operationId: createSale
+      tags: [sales]
+      summary: Record a new sale (also decrements stock)
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleInput"
+      responses:
+        "201":
+          description: Sale recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sale"
+
+  /shops/{email}/dashboard:
+    get:
+      operationId: getDashboard
+      tags: [reports]
+      summary: Dashboard summary stats
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /shops/{email}/report:
+    get:
+      operationId: getReport
+      tags: [reports]
+      summary: Aggregated report (overall, by month, top products)
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      responses:
+        "200":
+          description: Report data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportData"
+
+  /shops/{email}/expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      summary: List all expenses for a shop
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      responses:
+        "200":
+          description: List of expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createExpense
+      tags: [expenses]
+      summary: Record a new expense
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Expense created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+
+  /shops/{email}/expenses/{id}:
+    delete:
+      operationId: deleteExpense
+      tags: [expenses]
+      summary: Delete an expense
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+
+  /shops/{email}/backup:
+    get:
+      operationId: getBackup
+      tags: [backup]
+      summary: Download a full backup snapshot (products + sales)
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      responses:
+        "200":
+          description: Full backup
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupSnapshot"
+
+  /shops/{email}/restore:
+    post:
+      operationId: restoreBackup
+      tags: [backup]
+      summary: Replace shop data with the provided backup snapshot
+      parameters:
+        - $ref: "#/components/parameters/EmailParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BackupSnapshot"
+      responses:
+        "200":
+          description: Restore complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestoreResult"
+
+components:
+  parameters:
+    EmailParam:
+      name: email
+      in: path
+      required: true
+      description: Shop owner email (used as shared workspace identifier)
+      schema:
+        type: string
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    EnsureAccount:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+
+    AuthResult:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        error:
+          type: string
+
+    Product:
+      type: object
+      required: [id, name, cat, buy, sell, stock]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cat:
+          type: string
+        buy:
+          type: number
+        sell:
+          type: number
+        stock:
+          type: number
+
+    ProductInput:
+      type: object
+      required: [name, cat, buy, sell, stock]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        cat:
+          type: string
+        buy:
+          type: number
+        sell:
+          type: number
+        stock:
+          type: number
+
+    Sale:
+      type: object
+      required: [id, date, pid, pname, qty, price, buy, disc, total, profit]
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          description: ISO date string
+        pid:
+          type: string
+        pname:
+          type: string
+        qty:
+          type: number
+        price:
+          type: number
+        buy:
+          type: number
+        disc:
+          type: number
+        total:
+          type: number
+        profit:
+          type: number
+        note:
+          type: string
+
+    SaleInput:
+      type: object
+      required: [pid, qty, price, disc]
+      properties:
+        pid:
+          type: string
+        qty:
+          type: number
+          minimum: 1
+        price:
+          type: number
+          minimum: 0
+        disc:
+          type: number
+          minimum: 0
+        note:
+          type: string
+
+    Expense:
+      type: object
+      required: [id, date, cat, amount]
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          description: ISO date string
+        cat:
+          type: string
+        amount:
+          type: number
+        note:
+          type: string
+
+    ExpenseInput:
+      type: object
+      required: [cat, amount]
+      properties:
+        cat:
+          type: string
+          minLength: 1
+        amount:
+          type: number
+          minimum: 0
+        note:
+          type: string
+        date:
+          type: string
+          description: Optional ISO date string (defaults to now)
+
+    DashboardSummary:
+      type: object
+      required:
+        - todayRevenue
+        - todayProfit
+        - totalRevenue
+        - totalProfit
+        - productCount
+        - lowStockCount
+        - todaySales
+      properties:
+        todayRevenue:
+          type: number
+        todayProfit:
+          type: number
+        totalRevenue:
+          type: number
+        totalProfit:
+          type: number
+        productCount:
+          type: number
+        lowStockCount:
+          type: number
+        todaySales:
+          type: array
+          items:
+            $ref: "#/components/schemas/Sale"
+
+    ReportData:
+      type: object
+      required:
+        - totalRevenue
+        - totalCost
+        - totalProfit
+        - profitMargin
+        - byMonth
+        - topProducts
+      properties:
+        totalRevenue:
+          type: number
+        totalCost:
+          type: number
+        totalProfit:
+          type: number
+        profitMargin:
+          type: number
+        byMonth:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyReportEntry"
+        topProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductReportEntry"
+
+    MonthlyReportEntry:
+      type: object
+      required: [month, revenue, profit, count]
+      properties:
+        month:
+          type: string
+          description: YYYY-MM
+        revenue:
+          type: number
+        profit:
+          type: number
+        count:
+          type: number
+
+    ProductReportEntry:
+      type: object
+      required: [name, revenue, profit, qty]
+      properties:
+        name:
+          type: string
+        revenue:
+          type: number
+        profit:
+          type: number
+        qty:
+          type: number
+
+    BackupSnapshot:
+      type: object
+      required: [products, sales]
+      properties:
+        exportedAt:
+          type: string
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        sales:
+          type: array
+          items:
+            $ref: "#/components/schemas/Sale"
+        expenses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expense"
+
+    RestoreResult:
+      type: object
+      required: [products, sales]
+      properties:
+        products:
+          type: number
+        sales:
+          type: number
+        expenses:
+          type: number
