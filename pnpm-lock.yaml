@@ -70,8 +70,8 @@ catalogs:
 overrides:
   xlsx: ^0.18.5
   uuid: ^14.0.0
-  esbuild: ^0.25.0
-  postcss: ^8.5.0
+  esbuild: '>=0.25.0'
+  postcss: '>=8.4.50'
 
 importers:
 
@@ -130,7 +130,7 @@ importers:
         specifier: 'catalog:'
         version: 25.6.0
       esbuild:
-        specifier: ^0.25.12
+        specifier: '>=0.25.0'
         version: 0.25.12
       esbuild-plugin-pino:
         specifier: ^2.3.3
@@ -3616,7 +3616,7 @@ packages:
   esbuild-plugin-pino@2.3.3:
     resolution: {integrity: sha512-5RIsILwgqy8wIV5pVg2gb13gJlH3EKKg613Js8q25p3tFsKA8ftsgWQFdgGbIkUe77Ttjl8lctuGkchRAvXGfw==}
     peerDependencies:
-      esbuild: ^0.25.0
+      esbuild: '>=0.25.0'
       pino: '>=7.0.0'
       pino-pretty: '*'
       thread-stream: '*'
