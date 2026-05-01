@@ -15,7 +15,6 @@
   },
   "pnpm": {
     "overrides": {
-      "xlsx": "^0.18.5",
       "uuid": "^14.0.0",
       "esbuild": ">=0.25.0",
       "postcss": ">=8.4.50"
