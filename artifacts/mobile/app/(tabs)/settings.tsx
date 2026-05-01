@@ -25,7 +25,7 @@ import { Image } from "expo-image";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import React, { useState } from "react";
-import * as XLSX from "xlsx";
+import writeXlsxFile from "write-excel-file/browser";
 import {
   ActivityIndicator,
   Alert,
@@ -156,89 +156,81 @@ export default function SettingsScreen() {
     try {
       const data = (await getBackup(email)) as BackupSnapshot;
 
-      const productRows = (data.products ?? []).map((p) => ({
-        নাম: p.name,
-        ক্যাটাগরি: p.cat,
-        "ক্রয় মূল্য": Number(p.buy) || 0,
-        "বিক্রয় মূল্য": Number(p.sell) || 0,
-        স্টক: Number(p.stock) || 0,
-      }));
+      const bold = { fontWeight: "bold" as const };
 
-      const saleRows = (data.sales ?? []).map((s) => {
-        const d = new Date(s.date);
-        return {
-          তারিখ: isNaN(d.getTime()) ? s.date : d.toISOString().slice(0, 10),
-          পণ্য: s.pname,
-          পরিমাণ: Number(s.qty) || 0,
-          "একক মূল্য": Number(s.price) || 0,
-          "ক্রয় মূল্য": Number(s.buy) || 0,
-          ছাড়: Number(s.disc) || 0,
-          মোট: Number(s.total) || 0,
-          লাভ: Number(s.profit) || 0,
-          নোট: s.note ?? "",
-        };
-      });
+      const productSheet = [
+        [
+          { value: "নাম", ...bold },
+          { value: "ক্যাটাগরি", ...bold },
+          { value: "ক্রয় মূল্য", ...bold },
+          { value: "বিক্রয় মূল্য", ...bold },
+          { value: "স্টক", ...bold },
+        ],
+        ...(data.products ?? []).map((p) => [
+          { value: p.name ?? "" },
+          { value: p.cat ?? "" },
+          { value: Number(p.buy) || 0 },
+          { value: Number(p.sell) || 0 },
+          { value: Number(p.stock) || 0 },
+        ]),
+      ];
 
-      const expenseRows = (data.expenses ?? []).map((e) => {
-        const d = new Date(e.date);
-        return {
-          তারিখ: isNaN(d.getTime()) ? e.date : d.toISOString().slice(0, 10),
-          ক্যাটাগরি: e.cat,
-          পরিমাণ: Number(e.amount) || 0,
-          নোট: e.note ?? "",
-        };
-      });
+      const salesSheet = [
+        [
+          { value: "তারিখ", ...bold },
+          { value: "পণ্য", ...bold },
+          { value: "পরিমাণ", ...bold },
+          { value: "একক মূল্য", ...bold },
+          { value: "ক্রয় মূল্য", ...bold },
+          { value: "ছাড়", ...bold },
+          { value: "মোট", ...bold },
+          { value: "লাভ", ...bold },
+          { value: "নোট", ...bold },
+        ],
+        ...(data.sales ?? []).map((s) => {
+          const d = new Date(s.date);
+          return [
+            { value: isNaN(d.getTime()) ? s.date : d.toISOString().slice(0, 10) },
+            { value: s.pname ?? "" },
+            { value: Number(s.qty) || 0 },
+            { value: Number(s.price) || 0 },
+            { value: Number(s.buy) || 0 },
+            { value: Number(s.disc) || 0 },
+            { value: Number(s.total) || 0 },
+            { value: Number(s.profit) || 0 },
+            { value: s.note ?? "" },
+          ];
+        }),
+      ];
 
-      const wb = XLSX.utils.book_new();
-      const wsProducts = XLSX.utils.json_to_sheet(
-        productRows.length
-          ? productRows
-          : [
-              {
-                নাম: "",
-                ক্যাটাগরি: "",
-                "ক্রয় মূল্য": "",
-                "বিক্রয় মূল্য": "",
-                স্টক: "",
-              },
-            ],
-      );
-      const wsSales = XLSX.utils.json_to_sheet(
-        saleRows.length
-          ? saleRows
-          : [
-              {
-                তারিখ: "",
-                পণ্য: "",
-                পরিমাণ: "",
-                "একক মূল্য": "",
-                "ক্রয় মূল্য": "",
-                ছাড়: "",
-                মোট: "",
-                লাভ: "",
-                নোট: "",
-              },
-            ],
-      );
-      const wsExpenses = XLSX.utils.json_to_sheet(
-        expenseRows.length
-          ? expenseRows
-          : [{ তারিখ: "", ক্যাটাগরি: "", পরিমাণ: "", নোট: "" }],
-      );
-      XLSX.utils.book_append_sheet(wb, wsProducts, "পণ্য");
-      XLSX.utils.book_append_sheet(wb, wsSales, "বিক্রয়");
-      XLSX.utils.book_append_sheet(wb, wsExpenses, "খরচ");
+      const expenseSheet = [
+        [
+          { value: "তারিখ", ...bold },
+          { value: "ক্যাটাগরি", ...bold },
+          { value: "পরিমাণ", ...bold },
+          { value: "নোট", ...bold },
+        ],
+        ...(data.expenses ?? []).map((e) => {
+          const d = new Date(e.date);
+          return [
+            { value: isNaN(d.getTime()) ? e.date : d.toISOString().slice(0, 10) },
+            { value: e.cat ?? "" },
+            { value: Number(e.amount) || 0 },
+            { value: e.note ?? "" },
+          ];
+        }),
+      ];
 
       const filename = `fabricghar-${new Date().toISOString().slice(0, 10)}.xlsx`;
 
+      const result = await writeXlsxFile([
+        { data: productSheet, sheet: "পণ্য" },
+        { data: salesSheet, sheet: "বিক্রয়" },
+        { data: expenseSheet, sheet: "খরচ" },
+      ]);
+      const blob = await result.toBlob();
+
       if (Platform.OS === "web") {
-        const arrayBuf = XLSX.write(wb, {
-          type: "array",
-          bookType: "xlsx",
-        }) as ArrayBuffer;
-        const blob = new Blob([arrayBuf], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -249,10 +241,15 @@ export default function SettingsScreen() {
         URL.revokeObjectURL(url);
         show("Excel ফাইল ডাউনলোড হয়েছে", "success");
       } else {
-        const base64 = XLSX.write(wb, {
-          type: "base64",
-          bookType: "xlsx",
-        }) as string;
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1] ?? "");
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
         const uri = `${FileSystem.cacheDirectory}${filename}`;
         await FileSystem.writeAsStringAsync(uri, base64, {
           encoding: FileSystem.EncodingType.Base64,
